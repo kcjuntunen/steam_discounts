@@ -121,9 +121,9 @@ if __name__ == '__main__':
 
     # Constants.
     TITLE_WIDTH = 40
-    MAX_BATCH_SIZE = 10 # The site isn't outputting more than 10 for me
+    MAX_BATCH_SIZE = 10
 
-    # Are we in emacs?
+    # Are we in emacs
     in_emacs = False
     parent_proc = os.popen("ps -p %d -ocmd=" % os.getppid()).read().strip()
     if "emacs" in parent_proc:
