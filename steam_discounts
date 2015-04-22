@@ -123,6 +123,12 @@ if __name__ == '__main__':
     TITLE_WIDTH = 40
     MAX_BATCH_SIZE = 50
 
+    # Are we in emacs
+    in_emacs = False
+    parent_proc = os.popen("ps -p %d -ocmd=" % os.getppid()).read().strip()
+    if "emacs" in parent_proc:
+        in_emacs = True
+
     # Get the number of discounts first.
     conn = urllib.urlopen('http://store.steampowered.com/search/?specials=1')
     page = conn.read()
@@ -179,7 +185,7 @@ if __name__ == '__main__':
                 ).encode('utf-8')
 
     # Print output, paging it if appropriate.
-    if sys.stdout.isatty():
+    if sys.stdout.isatty() and not in_emacs:
         cmd = os.getenv('PAGER', default='less')
         pager = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE)
         pager.stdin.write(output)
