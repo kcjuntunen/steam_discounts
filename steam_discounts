@@ -19,11 +19,11 @@ class Entry(object):
     # Entries can be sorted by title.
     def __cmp__(self, other):
         return cmp(self.title.lower(), other.title.lower())
-    
+
 class DiscountsParser(HTMLParser.HTMLParser):
     def __init__(self):
         HTMLParser.HTMLParser.__init__(self)
-    
+
     @staticmethod
     def entity2uni(name):
         return unichr(htmlentitydefs.name2codepoint[name])
@@ -182,8 +182,8 @@ if __name__ == '__main__':
     # Compose output.
     output = 'Listing %d discounts.\n' % (obtained, )
     for entry in sorted(itertools.chain(*batches)):
-        if float(entry.price.lstrip(u'$')) < 6:
-            output += (u'%s ...%s %7s [%7s %s] (%s)\n' %
+        if float(entry.price.lstrip(u'$')) < 2:
+            output += (u'%s ...%s %7s [%7s %s]\n' %
                        (
                            entry.title[:TITLE_WIDTH],
                            '.' * (TITLE_WIDTH - len(entry.title)),
