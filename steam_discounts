@@ -14,6 +14,7 @@ class Entry(object):
         self.orig_price = u''
         self.discount = u''
         self.price = u''
+        self.description = u''
 
     # Entries can be sorted by title.
     def __cmp__(self, other):
@@ -41,6 +42,7 @@ class DiscountsParser(HTMLParser.HTMLParser):
         self.in_discount_pct_ = False
         self.in_tab_price_ = False
         self.in_strike_ = False
+        self.in_genre_release_ = False
 
     def handle_starttag(self, tag, attrs):
         attrs_map = dict(attrs)
@@ -55,10 +57,12 @@ class DiscountsParser(HTMLParser.HTMLParser):
                 self.in_discount_pct_ = True
             elif attrs_map.get('class', '') == 'tab_price':
                 self.in_tab_price_ = True
+            elif attrs_map.get('class', '') == 'genre_release':
+                self.in_genre_release_ = True
 
         elif tag == 'strike':
             self.in_strike_ = True
-    
+
     def handle_endtag(self, tag):
         if tag == 'h4':
             self.in_h4_ = False
@@ -68,6 +72,8 @@ class DiscountsParser(HTMLParser.HTMLParser):
                 self.in_discount_pct_ = False
             elif self.in_tab_price_:
                 self.in_tab_price_ = False
+            elif self.in_genre_release_:
+                self.in_genre_release_ = False
                 # This was the last field to extract.
                 self.entries_.append(self.current_entry_)
 
@@ -84,16 +90,18 @@ class DiscountsParser(HTMLParser.HTMLParser):
         elif self.in_tab_price_:
             # Note we only enter here if not in <strike>.
             self.current_entry_.price += text
+        elif self.in_genre_release_:
+            self.current_entry_.description += text
 
     def handle_data(self, data):
         self.append_text(data.strip().decode('utf-8'))
-    
+
     def handle_entityref(self, name):
         self.append_text(self.entity2uni(name))
-    
+
     def handle_charref(self, ref):
         self.append_text(self.ref2uni(ref))
-    
+
     # Behave like a sequence of Entries.
     def __len__(self):
         return self.entries_.__len__()
@@ -174,15 +182,16 @@ if __name__ == '__main__':
     # Compose output.
     output = 'Listing %d discounts.\n' % (obtained, )
     for entry in sorted(itertools.chain(*batches)):
-        output += (u'%s ...%s %7s [%7s %s]\n' %
-                (
-                    entry.title[:TITLE_WIDTH],
-                    '.' * (TITLE_WIDTH - len(entry.title)),
-                    entry.price,
-                    entry.orig_price,
-                    entry.discount,
-                    )
-                ).encode('utf-8')
+        if float(entry.price.lstrip(u'$')) < 6:
+            output += (u'%s ...%s %7s [%7s %s] (%s)\n' %
+                       (
+                           entry.title[:TITLE_WIDTH],
+                           '.' * (TITLE_WIDTH - len(entry.title)),
+                           entry.price,
+                           entry.orig_price,
+                           entry.discount,
+                       )
+                   ).encode('utf-8')
 
     # Print output, paging it if appropriate.
     if sys.stdout.isatty() and not in_emacs:
