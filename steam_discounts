@@ -15,6 +15,7 @@ class Entry(object):
         self.discount = u''
         self.price = u''
         self.description = u''
+        self.platform = 0
 
     # Entries can be sorted by title.
     def __cmp__(self, other):
@@ -43,6 +44,10 @@ class DiscountsParser(HTMLParser.HTMLParser):
         self.in_tab_price_ = False
         self.in_strike_ = False
         self.in_genre_release_ = False
+        self.platform_linux_ = False
+        self.platform_mac_ = False
+        self.platform_win_ = False
+        self.platform_steamplay_ = False
 
     def handle_starttag(self, tag, attrs):
         attrs_map = dict(attrs)
@@ -60,6 +65,20 @@ class DiscountsParser(HTMLParser.HTMLParser):
             elif attrs_map.get('class', '') == 'genre_release':
                 self.in_genre_release_ = True
 
+        elif tag == 'span':
+            if attrs_map.get('class', '') == 'platform_img linux':
+                self.platform_linux_ = True
+                self.current_entry_.platform += 0x1
+            elif attrs_map.get('class', '') == 'platform_img mac':
+                self.platform_mac_ = True
+                self.current_entry_.platform += 0x2
+            elif attrs_map.get('class', '') == 'platform_img win':
+                self.platform_win_ = True
+                self.current_entry_.platform += 0x4
+            elif attrs_map.get('class', '') == 'platform_img steamplay':
+                self.platform_steamplay_ = True
+                self.current_entry_.platform += 0x8
+        
         elif tag == 'strike':
             self.in_strike_ = True
 
@@ -77,6 +96,16 @@ class DiscountsParser(HTMLParser.HTMLParser):
                 # This was the last field to extract.
                 self.entries_.append(self.current_entry_)
 
+        elif tag == 'span':
+            if self.platform_linux_:
+                self.platform_linux_ = False
+            elif self.platform_mac_:
+                self.platform_mac_ = False
+            elif self.platform_steamplay_:
+                self.platform_steamplay_ = False
+            elif self.platform_win_:
+                self.platform_win = False
+            
         elif tag == 'strike':
             self.in_strike_ = False
 
@@ -130,6 +159,10 @@ if __name__ == '__main__':
     # Constants.
     TITLE_WIDTH = 40
     MAX_BATCH_SIZE = 10 # The site isn't outputting more than 10 for me
+    LINUX = 0x1
+    MAC = 0x2
+    WIN = 0x4
+    STEAMPLAY = 0x8
 
     # Are we in emacs?
     in_emacs = False
@@ -180,18 +213,36 @@ if __name__ == '__main__':
             break
 
     # Compose output.
-    output = 'Listing %d discounts.\n' % (obtained, )
-    for entry in sorted(itertools.chain(*batches)):
-        if float(entry.price.lstrip(u'$')) < 2:
-            output += (u'%s ...%s %7s [%7s %s]\n' %
-                       (
-                           entry.title[:TITLE_WIDTH],
-                           '.' * (TITLE_WIDTH - len(entry.title)),
-                           entry.price,
-                           entry.orig_price,
-                           entry.discount,
-                       )
-                   ).encode('utf-8')
+    #output = 'Listing %d discounts.\n' % (obtained, )
+    filtered_entry = [entry for entry in sorted(itertools.chain(*batches)) if entry.platform & LINUX == LINUX]
+    # if entry.platform & LINUX == LINUX:
+    #     if float(entry.price.lstrip(u'$')) < 6:
+    #         output += (u'%s ...%s %7s [%7s %s] (%s)\n' %
+    #                    (
+    #                        entry.title[:TITLE_WIDTH],
+    #                        '.' * (TITLE_WIDTH - len(entry.title)),
+    #                        entry.price,
+    #                        entry.orig_price,
+    #                        entry.discount,
+    #                        str(entry.platform)
+    #                    )
+    #         ).encode('utf-8')
+    
+    output = 'Listing %d discounts.\n' % (len(filtered_entry), )
+    count = 1
+    for e in filtered_entry:
+        output += (u'%3d.) %s ...%s %7s [%7s %s] (%s)\n' %
+                   (
+                       count,
+                       e.title[:TITLE_WIDTH],
+                       '.' * (TITLE_WIDTH - len(e.title)),
+                       e.price,
+                       e.orig_price,
+                       e.discount,
+                       str(bin(e.platform))
+                   )
+               ).encode('utf-8')
+        count += 1
 
     # Print output, paging it if appropriate.
     if sys.stdout.isatty() and not in_emacs:
